@@ -16,6 +16,9 @@ defmodule Plug.RedirectTest do
     redirect("/users/:slug", "/profile/:slug")
     redirect("/other/:slug", "http://somewhere.com/profile/:slug")
 
+    redirect("/pages?type=modern", "/pages/modern", status: 301, query: true)
+    redirect("/pages?type=old", "/pages?type=new", status: 302, query: true)
+
     # Old API
     redirect(301, "/old/foo/bar", "/go/here")
     redirect(302, "/old/jump/up", "/get/down")
@@ -91,6 +94,16 @@ defmodule Plug.RedirectTest do
   test "other hosts can be redirected to" do
     conn = get("/other/louis")
     assert_redirect(conn, 301, "http://somewhere.com/profile/louis")
+  end
+
+  test "query parameters can be redirected" do
+    conn = get("/pages?type=modern")
+    assert_redirect(conn, 301, "/pages/modern")
+  end
+
+  test "query parameters can be redirected to" do
+    conn = get("/pages?type=old")
+    assert_redirect(conn, 302, "/pages?type=new")
   end
 
   defp get(path) do
