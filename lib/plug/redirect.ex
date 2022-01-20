@@ -31,8 +31,30 @@ defmodule Plug.Redirect do
   ## Options
 
   * `:status` - The HTTP status code to use for the redirect.
+  * `:query` - The HTTP request is using query parameters.
   """
   defmacro redirect(from, to, options \\ [{:status, 301}])
+
+  defmacro redirect(from, to, [{:status, status}, {:query, query}])
+           when query == true and status in @redirect_codes do
+    [request_path, query_string] = String.split(from, "?")
+    to_segments = to |> Route.to_path_info_ast()
+
+    quote do
+      def call(
+            %Plug.Conn{request_path: unquote(request_path), query_string: unquote(query_string)} =
+              conn,
+            _opts
+          ) do
+        to = unquote(to_segments) |> Enum.join("/")
+
+        conn
+        |> Plug.Conn.put_resp_header("location", to)
+        |> Plug.Conn.resp(unquote(status), "You are being redirected.")
+        |> Plug.Conn.halt()
+      end
+    end
+  end
 
   defmacro redirect(from, to, [{:status, status}])
            when status in @redirect_codes do
