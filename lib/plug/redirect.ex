@@ -5,6 +5,7 @@ defmodule Plug.Redirect do
 
   alias Plug.Redirect.Route
 
+  @default_options %{status: 301, query: false}
   @redirect_codes [301, 302, 303, 307, 308]
 
   defmacro __using__(_opts) do
@@ -35,40 +36,44 @@ defmodule Plug.Redirect do
   """
   defmacro redirect(from, to, options \\ [{:status, 301}])
 
-  defmacro redirect(from, to, [{:status, status}, {:query, query}])
-           when query == true and status in @redirect_codes do
-    [request_path, query_string] = String.split(from, "?")
-    to_segments = to |> Route.to_path_info_ast()
+  defmacro redirect(from, to, options) when is_binary(from) do
+    options = Enum.into(options, @default_options)
 
-    quote do
-      def call(
-            %Plug.Conn{request_path: unquote(request_path), query_string: unquote(query_string)} =
-              conn,
-            _opts
-          ) do
-        to = unquote(to_segments) |> Enum.join("/")
+    if Enum.member?(@redirect_codes, options[:status]) do
+      if options[:query] == true do
+        [request_path, query_string] = String.split(from, "?")
+        to_segments = to |> Route.to_path_info_ast()
 
-        conn
-        |> Plug.Conn.put_resp_header("location", to)
-        |> Plug.Conn.resp(unquote(status), "You are being redirected.")
-        |> Plug.Conn.halt()
-      end
-    end
-  end
+        quote do
+          def call(
+                %Plug.Conn{
+                  request_path: unquote(request_path),
+                  query_string: unquote(query_string)
+                } = conn,
+                _opts
+              ) do
+            to = unquote(to_segments) |> Enum.join("/")
 
-  defmacro redirect(from, to, [{:status, status}])
-           when status in @redirect_codes do
-    from_segments = from |> Route.to_path_info_ast() |> Enum.filter(&(&1 != ""))
-    to_segments = to |> Route.to_path_info_ast()
+            conn
+            |> Plug.Conn.put_resp_header("location", to)
+            |> Plug.Conn.resp(unquote(options[:status]), "You are being redirected.")
+            |> Plug.Conn.halt()
+          end
+        end
+      else
+        from_segments = from |> Route.to_path_info_ast() |> Enum.filter(&(&1 != ""))
+        to_segments = to |> Route.to_path_info_ast()
 
-    quote do
-      def call(%Plug.Conn{path_info: unquote(from_segments)} = conn, _opts) do
-        to = unquote(to_segments) |> Enum.join("/")
+        quote do
+          def call(%Plug.Conn{path_info: unquote(from_segments)} = conn, _opts) do
+            to = unquote(to_segments) |> Enum.join("/")
 
-        conn
-        |> Plug.Conn.put_resp_header("location", to)
-        |> Plug.Conn.resp(unquote(status), "You are being redirected.")
-        |> Plug.Conn.halt()
+            conn
+            |> Plug.Conn.put_resp_header("location", to)
+            |> Plug.Conn.resp(unquote(options[:status]), "You are being redirected.")
+            |> Plug.Conn.halt()
+          end
+        end
       end
     end
   end

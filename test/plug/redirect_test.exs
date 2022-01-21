@@ -16,8 +16,8 @@ defmodule Plug.RedirectTest do
     redirect("/users/:slug", "/profile/:slug")
     redirect("/other/:slug", "http://somewhere.com/profile/:slug")
 
-    redirect("/pages?type=modern", "/pages/modern", status: 301, query: true)
-    redirect("/pages?type=old", "/pages?type=new", status: 302, query: true)
+    redirect("/pages?type=modern", "/pages/modern", query: true)
+    redirect("/pages?type=old", "/pages?type=new", query: true, status: 302)
 
     # Old API
     redirect(301, "/old/foo/bar", "/go/here")
